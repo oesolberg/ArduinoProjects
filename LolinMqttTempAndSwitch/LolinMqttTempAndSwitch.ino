@@ -2,6 +2,8 @@
 #include <PubSubClient.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+
+//File for WIFI_SSID, WIFI_PASSWORD, MQTT_SERVER, SERVER_FAN_TOPIC, SERVER_TEMPERATURE_TOPIC, MQTT_ID, MQTT_USER, MQTT_PASSWORD 
 #include "Secrets.h"
 
 const int oneWireBus = 4; //D2
@@ -21,7 +23,7 @@ void setup()
 {
   Serial.begin(115200);
   setup_wifi();
-  client.setServer(mqtt_server, 1883);
+  client.setServer(MQTT_SERVER, 1883);
   // Start the Serial Monitor
   Serial.begin(115200);
   // Start the DS18B20 sensor
@@ -33,7 +35,7 @@ void setup()
 void setup_wifi()
 {
   delay(10);
-  WiFi.begin(wifi_ssid, wifi_password);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
@@ -47,7 +49,7 @@ void reconnect()
   while (!client.connected())
   {
     Serial.print("Attempting MQTT connection...");
-    if (client.connect(mqtt_id, mqtt_user, mqtt_password))
+    if (client.connect(MQTT_ID, MQTT_USER, MQTT_PASSWORD))
     {
       Serial.println("connected");
     }
@@ -91,14 +93,14 @@ void loop()
       temp = newTemp;
       Serial.print("New temperature:");
       Serial.println(String(temp).c_str());
-      client.publish(server_temperature_topic, String(temp).c_str(), true);
+      client.publish(SERVER_TEMPERATURE_TOPIC, String(temp).c_str(), true);
     }
     if (newTemp >= onTempForFan && fanStatus == false)
     {
       digitalWrite(relayInput, HIGH);
       Serial.print("Fan status:");
       Serial.println("ON");
-      client.publish(server_fan_topic, "true", true);
+      client.publish(SERVER_FAN_TOPIC, "true", true);
       fanStatus = true;
     }
     if (newTemp <= offTempForFan && fanStatus == true)
@@ -106,7 +108,7 @@ void loop()
       digitalWrite(relayInput, LOW);
       Serial.print("Fan status:");
       Serial.println("OFF");
-      client.publish(server_fan_topic, "false", true);
+      client.publish(SERVER_FAN_TOPIC, "false", true);
       fanStatus = false;
     }
   }
