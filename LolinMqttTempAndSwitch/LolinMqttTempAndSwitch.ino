@@ -19,14 +19,14 @@ const int ESP_BUILTIN_LED = 2;
 #ifdef NODEMCU_SENSOR
   #if (NODEMCU_SENSOR==MOBEL_MEDIA)
     //MediaMobel
-    const int ONE_WIRE_BUS = 5; //D2
+    const int ONE_WIRE_BUS = 5; //D1
     const int RELAY_INPUT = 13; //D7
     const int RELAY_ON=0;
     const int RELAY_OFF=1;
   #elif (NODEMCU_SENSOR==CLOSET_SERVER)
     //ServerCloset
     const int ONE_WIRE_BUS = 4; //D2
-    const int RELAY_INPUT = 5; //D1
+    const int RELAY_INPUT = 13; //D7
     const int RELAY_ON=1;
     const int RELAY_OFF=0;
   #endif
@@ -40,6 +40,7 @@ DallasTemperature sensors(&oneWire);
 const float ON_TEMP_FOR_FAN = 33;
 const float OFF_TEMP_FOR_FAN = 31;
 const int MORSE_TIME_PERIOD = 150;
+const long MAX_BETWEEN_PUBLISH_TEMPERATURE=300000;//5 min
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -181,6 +182,7 @@ void SendShort() {
 }
 
 long lastMsg = 0;
+long lastPublishedMsg = 0;
 float temp = 0.0;
 float diff = 0.5;
 bool fanRunning = false;
@@ -188,6 +190,10 @@ bool fanRunning = false;
 bool checkBound(float newValue, float prevValue, float maxDiff)
 {
   return newValue < prevValue - maxDiff || newValue > prevValue + maxDiff;
+}
+
+bool timeDiffHigher(long lastPublished,long now,long maxBetweenMessages){
+  return now>=(lastPublished+maxBetweenMessages);
 }
 
 void Blink() {
@@ -212,11 +218,11 @@ void SetFanRelayToOff() {
 void SetFanRelayAndSendMessage(bool runFan) {
   Serial.print("Fan status:");
   String fanSerialStatus = "OFF";
-  char mqttMessage[] = "0";
+  char mqttMessage[] = "Off";
   if (runFan)
   {
     fanSerialStatus = "ON";
-    strcpy(mqttMessage, "1");
+    strcpy(mqttMessage, "On");
     digitalWrite(RELAY_INPUT, RELAY_ON);
   }
   else
@@ -238,10 +244,10 @@ void SendInitialDataToMqtt(float temperature , bool relayState) {
   //Temperature
   client.publish(SERVER_TEMPERATURE_TOPIC, String(temperature).c_str(), true);
   //Fan status
-  char mqttMessage[] = "0";
+  char mqttMessage[] = "Off";
   if (relayState)
   {
-    strcpy(mqttMessage, "1");
+    strcpy(mqttMessage, "On");
   }
   client.publish(SERVER_FAN_TOPIC, mqttMessage , true);
   
@@ -283,12 +289,13 @@ void loop()
     if (newTemp <= OFF_TEMP_FOR_FAN && fanRunning) {
       SetFanRelayToOff();
     }
-    if (checkBound(newTemp, temp, diff))
+    if (checkBound(newTemp, temp, diff) || timeDiffHigher(lastPublishedMsg,now,MAX_BETWEEN_PUBLISH_TEMPERATURE))
     {
       temp = newTemp;
       Serial.print("New temperature:");
       Serial.println(String(temp).c_str());
       client.publish(SERVER_TEMPERATURE_TOPIC, String(temp).c_str(), true);
+      lastPublishedMsg = now;
       Blink();
     }
   }
