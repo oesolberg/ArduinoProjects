@@ -1,3 +1,5 @@
+
+
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
@@ -8,12 +10,28 @@
 #include <DallasTemperature.h>
 
 
+
 //File for WIFI_SSID, WIFI_PASSWORD, MQTT_SERVER, SERVER_FAN_TOPIC, SERVER_TEMPERATURE_TOPIC, MQTT_ID, MQTT_USER, MQTT_PASSWORD
 #include "Secrets.h"
 
 const int ESP_BUILTIN_LED = 2;
-const int ONE_WIRE_BUS = 4; //D2
-const int RELAY_INPUT = 5; //D1
+
+#ifdef NODEMCU_SENSOR
+  #if (NODEMCU_SENSOR==MOBEL_MEDIA)
+    //MediaMobel
+    const int ONE_WIRE_BUS = 5; //D2
+    const int RELAY_INPUT = 13; //D7
+    const int RELAY_ON=0;
+    const int RELAY_OFF=1;
+  #elif (NODEMCU_SENSOR==CLOSET_SERVER)
+    //ServerCloset
+    const int ONE_WIRE_BUS = 4; //D2
+    const int RELAY_INPUT = 5; //D1
+    const int RELAY_ON=1;
+    const int RELAY_OFF=0;
+  #endif
+#endif
+
 // Setup a oneWire instance to communicate with any OneWire devices
 OneWire oneWire(ONE_WIRE_BUS);
 // Pass our oneWire reference to Dallas Temperature sensor
@@ -36,7 +54,7 @@ void setup()
   pinMode(RELAY_INPUT, OUTPUT);
   pinMode(ONE_WIRE_BUS, INPUT);
   //Set
-  digitalWrite(RELAY_INPUT, LOW);
+  digitalWrite(RELAY_INPUT, RELAY_OFF);
   digitalWrite(ESP_BUILTIN_LED, LOW);
 
   SendOK();
@@ -194,16 +212,16 @@ void SetFanRelayToOff() {
 void SetFanRelayAndSendMessage(bool runFan) {
   Serial.print("Fan status:");
   String fanSerialStatus = "OFF";
-  char mqttMessage[] = "false";
+  char mqttMessage[] = "0";
   if (runFan)
   {
     fanSerialStatus = "ON";
-    strcpy(mqttMessage, "true");
-    digitalWrite(RELAY_INPUT, HIGH);
+    strcpy(mqttMessage, "1");
+    digitalWrite(RELAY_INPUT, RELAY_ON);
   }
   else
   {
-    digitalWrite(RELAY_INPUT, LOW);
+    digitalWrite(RELAY_INPUT, RELAY_OFF);
   }
   Serial.println(fanSerialStatus);
   client.publish(SERVER_FAN_TOPIC, mqttMessage, true);
@@ -213,13 +231,20 @@ void SetFanRelayAndSendMessage(bool runFan) {
 
 void SendInitialDataToMqtt(float temperature , bool relayState) {
   Serial.println("Sending initial state");
+  //Info
+  char data[100];  
+  sprintf(data,"Device with mqtt user '%s' is online at %s",MQTT_USER,WiFi.localIP().toString().c_str());
+  client.publish(SERVER_INFO_TOPIC,data,true);
+  //Temperature
   client.publish(SERVER_TEMPERATURE_TOPIC, String(temperature).c_str(), true);
-  char mqttMessage[] = "false";
+  //Fan status
+  char mqttMessage[] = "0";
   if (relayState)
   {
-    strcpy(mqttMessage, "true");
+    strcpy(mqttMessage, "1");
   }
   client.publish(SERVER_FAN_TOPIC, mqttMessage , true);
+  
   Blink();
 }
 
@@ -245,7 +270,8 @@ void loop()
     Serial.print("Got new reading:");
     Serial.println(String(newTemp).c_str());
 
-    bool relayState = digitalRead(RELAY_INPUT);
+    bool relayState = (digitalRead(RELAY_INPUT) && RELAY_ON);
+    
     if (isFirstRunInLoop) {
       SendInitialDataToMqtt(newTemp, relayState);
       isFirstRunInLoop=false;
