@@ -83,7 +83,6 @@ void setup_wifi()
       delay(5000);
       ESP.restart();
     }
-
   }
   //Do OTA stuff
   ArduinoOTA.onStart([]() {
@@ -290,9 +289,9 @@ void loop()
       SetFanRelayToOff();
     }
     if (checkBound(newTemp, temp, diff) || timeDiffHigher(lastPublishedMsg,now,MAX_BETWEEN_PUBLISH_TEMPERATURE))
-    {
+    {      
       temp = newTemp;
-      Serial.print("New temperature:");
+      Serial.print("*** New temperature:");
       Serial.println(String(temp).c_str());
       client.publish(SERVER_TEMPERATURE_TOPIC, String(temp).c_str(), true);
       lastPublishedMsg = now;
@@ -301,4 +300,5 @@ void loop()
   }
   //Delay 5 secs between each reading
   delay(5000);
+  MDNS.update();
 }
