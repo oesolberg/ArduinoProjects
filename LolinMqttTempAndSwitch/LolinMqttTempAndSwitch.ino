@@ -38,8 +38,8 @@ OneWire oneWire(ONE_WIRE_BUS);
 // Pass our oneWire reference to Dallas Temperature sensor
 DallasTemperature sensors(&oneWire);
 
-const float ON_TEMP_FOR_FAN = 31;
-const float OFF_TEMP_FOR_FAN = 27;
+const float ON_TEMP_FOR_FAN = 32.5;
+const float OFF_TEMP_FOR_FAN = 29;
 const int MORSE_TIME_PERIOD = 150;
 const long MAX_BETWEEN_PUBLISH_TEMPERATURE=300000;//5 min
 
