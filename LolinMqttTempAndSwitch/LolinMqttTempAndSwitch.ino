@@ -218,11 +218,11 @@ void SetFanRelayToOff() {
 void SetFanRelayAndSendMessage(bool runFan) {
   Serial.print("Fan status:");
   String fanSerialStatus = "OFF";
-  char mqttMessage[] = "Off";
+  char mqttMessage[] = "0";
   if (runFan)
   {
     fanSerialStatus = "ON";
-    strcpy(mqttMessage, "On");
+    strcpy(mqttMessage, "1");
     digitalWrite(RELAY_INPUT, RELAY_ON);
   }
   else
@@ -244,10 +244,10 @@ void SendInitialDataToMqtt(float temperature , bool relayState) {
   //Temperature
   client.publish(SERVER_TEMPERATURE_TOPIC, String(temperature).c_str(), true);
   //Fan status
-  char mqttMessage[] = "Off";
+  char mqttMessage[] = "0";
   if (relayState)
   {
-    strcpy(mqttMessage, "On");
+    strcpy(mqttMessage, "1");
   }
   client.publish(SERVER_FAN_TOPIC, mqttMessage , true);
   
