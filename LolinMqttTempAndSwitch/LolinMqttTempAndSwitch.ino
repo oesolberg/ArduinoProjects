@@ -235,6 +235,13 @@ void SetFanRelayAndSendMessage(bool runFan) {
   fanRunning = runFan;
 }
 
+void PublishTemperature(float temperature ){        
+      Serial.print("*** New temperature:");
+      Serial.println(String(temp).c_str());
+      client.publish(SERVER_TEMPERATURE_TOPIC, String(temp).c_str(), true);      
+      Blink();
+}
+
 void SendInitialDataToMqtt(float temperature , bool relayState) {
   Serial.println("Sending initial state");
   //Info
@@ -285,18 +292,17 @@ void loop()
 
     if (newTemp >= ON_TEMP_FOR_FAN && !fanRunning) {
       SetFanRelayToOn();
+      PublishTemperature(newTemp);      
     }
     if (newTemp <= OFF_TEMP_FOR_FAN && fanRunning) {
       SetFanRelayToOff();
+      PublishTemperature(newTemp);      
     }
     if (checkBound(newTemp, temp, diff) || timeDiffHigher(lastPublishedMsg,now,MAX_BETWEEN_PUBLISH_TEMPERATURE))
-    {      
-      temp = newTemp;
-      Serial.print("*** New temperature:");
-      Serial.println(String(temp).c_str());
-      client.publish(SERVER_TEMPERATURE_TOPIC, String(temp).c_str(), true);
+    { 
       lastPublishedMsg = now;
-      Blink();
+      temp=newTemp;     
+      PublishTemperature(newTemp);      
     }
   }
   //Delay 5 secs between each reading
