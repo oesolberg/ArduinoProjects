@@ -42,6 +42,7 @@ const float ON_TEMP_FOR_FAN = 34;
 const float OFF_TEMP_FOR_FAN = 31;
 const int MORSE_TIME_PERIOD = 150;
 const long MAX_BETWEEN_PUBLISH_TEMPERATURE=300000;//5 min
+const long MAX_BETWEEN_PUBLISH_INFO=600000;//10 min
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -183,6 +184,7 @@ void SendShort() {
 
 long lastMsg = 0;
 long lastPublishedMsg = 0;
+long lastPublishedIpAddressMsg = 0;
 float temp = 0.0;
 float diff = 0.5;
 bool fanRunning = false;
@@ -256,8 +258,16 @@ void SendInitialDataToMqtt(float temperature , bool relayState) {
   {
     strcpy(mqttMessage, "1");
   }
-  client.publish(SERVER_FAN_TOPIC, mqttMessage , true);
-  
+  client.publish(SERVER_FAN_TOPIC, mqttMessage , true);  
+  Blink();
+}
+
+void PublishIpAddressInfo(){
+  Serial.println("Sending ip address");
+  //Info
+  char data[100];  
+  sprintf(data,"Device with mqtt user '%s' is online at %s",MQTT_USER,WiFi.localIP().toString().c_str());
+  client.publish(SERVER_INFO_TOPIC,data,true);  
   Blink();
 }
 
@@ -284,26 +294,36 @@ void loop()
     Serial.println(String(newTemp).c_str());
 
     bool relayState = (digitalRead(RELAY_INPUT) && RELAY_ON);
-    
+    //Sending initial message
     if (isFirstRunInLoop) {
       SendInitialDataToMqtt(newTemp, relayState);
+      lastPublishedIpAddressMsg=now;
       isFirstRunInLoop=false;
     }
-
+    //Setting fan ON
     if (newTemp >= ON_TEMP_FOR_FAN && !fanRunning) {
       SetFanRelayToOn();
       PublishTemperature(newTemp);      
     }
+    //Setting fan OFF
     if (newTemp <= OFF_TEMP_FOR_FAN && fanRunning) {
       SetFanRelayToOff();
       PublishTemperature(newTemp);      
     }
+    //Sending temperature change
     if (checkBound(newTemp, temp, diff) || timeDiffHigher(lastPublishedMsg,now,MAX_BETWEEN_PUBLISH_TEMPERATURE))
     { 
       lastPublishedMsg = now;
       temp=newTemp;     
       PublishTemperature(newTemp);      
     }
+    //Sending address info
+    if (timeDiffHigher(lastPublishedIpAddressMsg,now,MAX_BETWEEN_PUBLISH_INFO))
+    {       
+      PublishIpAddressInfo();     
+      lastPublishedIpAddressMsg=now;
+    }
+    
   }
   //Delay 5 secs between each reading
   delay(5000);
