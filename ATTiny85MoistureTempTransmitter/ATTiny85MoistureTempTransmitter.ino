@@ -17,6 +17,7 @@ const int AirValue = 593;   //you need to replace this value with Value_1
 const int WaterValue = 230;  //you need to replace this value with Value_2
 
 OneWire oneWire(ONE_WIRE_BUS);
+//OneWire TemperatureSensor(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
 FineOffset tx(TX_PIN,3);
@@ -25,36 +26,53 @@ byte saveADCSRA;                      // variable to save the content of the ADC
 volatile byte counterWD = 0; // Count how many times WDog has fired. Used in the timing of the
                                            // loop to increase the delay before the LED is illuminated. For example,
 
+void DoBlink(int times=1);
+
 void setup() {  
   pinMode(ONE_WIRE_BUS,INPUT_PULLUP);
   pinMode ( LED_PIN, OUTPUT );   
   pinMode ( CURRENT_PIN, OUTPUT );   
   pinMode(MOISTURE_PIN,INPUT);
+  StartSensorCurrent();
+  sensors.begin();
+  delay(1000);
+
   
-  DoBlink();
+  DoBlink(2); 
+  delay(1000);
+  
   StopSensorCurrent();
-  //sensors.begin();
+  
+  
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-   if ( counterWD >= 7 )                 // if the WDog has fired 10 times......
+   if ( counterWD >= 3 )                 // if the WDog has fired more than 3 times......
   {
-    DoBlink();
-    counterWD = 0;                        // reset the counterWD for another 10 WDog firings
     StartSensorCurrent();
+    
+    counterWD = 0;                        // reset the counterWD 
     delay(1000);
     //Reading of moisture
-    //int humidity=GetHumidity();
-    int humidity=88;
+    DoBlink(2);
+    int humidity=GetHumidity();
+    
+    //int humidity=1;
+    //humidity=88;
     //Reading of temperature
-    //float temp=GetTemperature();
-    float temp=22.2;
+    DoBlink(3);
+    delay(1000);
+    float temp=GetTemperature();
+    //DoBlink((int)temp);
+    //float temp=33.3;
+    //temp=33.3;
     //Sending of readResults
-    SendTemperatureAndMoisture(temp,humidity);
-    delay(2000);
+    SendTemperatureAndMoisture(temp,humidity);    
+    
+    
+    DoBlink(2);
     StopSensorCurrent();
-    DoBlink();
   } // end of if counterWD
  
   sleepNow ();                          // then set up and enter sleep mode
@@ -63,38 +81,90 @@ void loop() {
 }
 
 int GetHumidity(){
-  delay(2000);
-  int soilMoistureValue = analogRead(MOISTURE_PIN);
+  delay(500);
+  int times=10;
+  int soilMoistureValue = 0;
+  for(int i=0;i<times;i++){
+    soilMoistureValue = analogRead(MOISTURE_PIN);  
+    delay(200);
+  }  
+  if(soilMoistureValue>AirValue) soilMoistureValue=AirValue;
+  if(soilMoistureValue<WaterValue) soilMoistureValue=WaterValue;
   int soilmoisturepercent = map(soilMoistureValue, AirValue, WaterValue, 0, 100);
   return soilmoisturepercent;
 }
 
+//float GetTemperature(){
+//  byte i;
+//  byte data[12];
+//  int16_t raw;
+//  float t;
+//  
+//  TemperatureSensor.reset(); // reset one wire buss
+//  TemperatureSensor.skip(); // select only device
+//
+//  TemperatureSensor.write(0x44); // start conversion
+//  delay(1000); // wait for the conversion
+//  TemperatureSensor.reset();
+//  TemperatureSensor.skip();
+//  TemperatureSensor.write(0xBE); // Read Scratchpad
+//
+//  for ( i = 0; i < 9; i++) { // 9 bytes
+//  
+//    data[i] = TemperatureSensor.read();
+//  
+//    }
+//  raw = (data[1] << 8) | data[0];
+//  t = (float)raw / 16.0;
+//  return t;
+//  }
+
 float GetTemperature(){
+  //Serial.begin(9600); 
+  //sensors.reset();
   sensors.begin();
-  delay(2000);
+  delay(1000);
+  //Check if temp sensor is ok
+  if (sensors.getDS18Count() == 0)
+    DoErrorBlink();    
+  else
+    DoBlink(1);
+  
   sensors.requestTemperatures(); 
-  delay(2000);
+  delay(1000);
   float temp=sensors.getTempCByIndex(0);
   return temp;
 }
 
 void SendTemperatureAndMoisture(float temperature, int humidity){
-  FineOffset tx(TX_PIN,1);
+  FineOffset tx(TX_PIN,3);
   delay(200);
   tx.send(DEVICE_ID, temperature, humidity);
+  delay(1000);
 }
 
 void StartSensorCurrent(){
-  digitalWrite(CURRENT_PIN,LOW);
-}
-void StopSensorCurrent(){
   digitalWrite(CURRENT_PIN,HIGH);
 }
+void StopSensorCurrent(){
+  digitalWrite(CURRENT_PIN,LOW);
+}
 
-void DoBlink() {
-  digitalWrite ( LED_PIN, HIGH );        // flash the led on for 100ms
-  delay ( 100 );                        // hate using delay(), but hey! it's only a demo
-  digitalWrite ( LED_PIN, LOW );
+void DoErrorBlink(){  
+    DoBlink(3);
+    delay(500);
+    DoBlink(3);
+    delay(500);
+    DoBlink(3);
+}
+
+void DoBlink(int times=1) {
+  for(int i=0;i<times;i++){
+    digitalWrite ( LED_PIN, HIGH );        // flash the led on for 100ms
+    delay ( 100 );                        // hate using delay(), but hey! it's only a demo
+    digitalWrite ( LED_PIN, LOW );
+    delay ( 100 ); 
+  }
 }
 
 void sleepNow ()
@@ -114,7 +184,7 @@ void sleepNow ()
   sleep_disable ();                       // after ISR fires, return to here and disable sleep
   power_all_enable ();                    // turn on power to ADC, TIMER1 and 2, Serial Interface
  
-  // ADCSRA = saveADCSRA;                 // turn on and restore the ADC if needed. Commented out, not needed.
+  ADCSRA = saveADCSRA;                 // turn on and restore the ADC if needed. Commented out, not needed.
  
 } // end of sleepNow ()
 
