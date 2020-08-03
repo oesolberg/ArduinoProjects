@@ -12,7 +12,7 @@
 #define ONE_WIRE_BUS 2
 #define CURRENT_PIN 0
 #define TX_PIN 1
-#define LED_PIN 3
+#define RF_CURRENT_PIN 3
 #define MOISTURE_PIN A2
 
 const int AirValue = 593;   //you need to replace this value with Value_1
@@ -26,42 +26,53 @@ FineOffset tx(TX_PIN,3);
 byte saveADCSRA;             // variable to save the content of the ADC for later. if needed.
 volatile byte counterWD = 0; // Count how many times WDog has fired. 
 
-void DoBlink(int times=1);
 
 void setup() {  
+  resetWatchDog ();                     // do this first in case WDog fires
   pinMode(ONE_WIRE_BUS,INPUT_PULLUP);
-  pinMode ( LED_PIN, OUTPUT );   
+  pinMode ( RF_CURRENT_PIN, OUTPUT );   
   pinMode ( CURRENT_PIN, OUTPUT );   
   pinMode(MOISTURE_PIN,INPUT);
   StartSensorCurrent();
   sensors.begin();
   delay(1000);  
-  DoBlink(2); 
+  //DoBlink(2); 
   delay(1000);  
   StopSensorCurrent(); 
+  StartRadioTransmitterCurrent();
+  delay(100);
+  StopRadioTransmitterCurrent();
+  delay(100);
+  StartRadioTransmitterCurrent();
+  delay(100);
+  StopRadioTransmitterCurrent();
 }
 
 
 
 void loop() {
   // put your main code here, to run repeatedly:
-   if ( counterWD >= 4 )                 // if the WDog has fired more than 3 times......
-  {
-    DoBlink(2);
+   if ( counterWD == 80)                 // if the WDog has fired more than x times......
+  { 
+    counterWD = 0;    // reset the counterWD     
     StartSensorCurrent();    
-    counterWD = 0;                        // reset the counterWD 
+                       
     delay(200);
     //Reading of moisture    
-    //int humidity=GetHumidity();    
-    int humidity=33; //For testing
+    int humidity=GetHumidity();    
+    //int humidity=33; //For testing
     //Reading of temperature    
     delay(200);
-    //float temp=GetTemperature();    
-    float temp=11; //For testing
-    //Sending of readResults
-    SendTemperatureAndMoisture(temp,humidity);        
+    float temp=GetTemperature();    
+    //float temp=11; //For testing
+    //Sending of readResults    
     StopSensorCurrent();
-    DoBlink(2);
+    delay(400);
+    StartRadioTransmitterCurrent();
+    delay(600);
+    SendTemperatureAndMoisture(temp,humidity);        
+    StopRadioTransmitterCurrent();
+    
   } // end of if counterWD 
   sleepNow ();                          // then set up and enter sleep mode
 }
@@ -84,11 +95,9 @@ float GetTemperature(){
   float temp=-99;
   delay(200);
   //Check if temp sensor is ok
-  if (sensors.getDS18Count() == 0)
-    DoErrorBlink();    
-  else
+  if (sensors.getDS18Count() != 0)  
   {
-    //DoBlink(1);
+    
     sensors.requestTemperatures(); 
     delay(200);
     temp=sensors.getTempCByIndex(0);
@@ -97,9 +106,12 @@ float GetTemperature(){
 }
 
 void SendTemperatureAndMoisture(float temperature, int humidity){
-  FineOffset tx(TX_PIN,3);
+  FineOffset tx(TX_PIN,2);
   delay(200);
   tx.send(DEVICE_ID, temperature, humidity);  
+  delay(400);
+  tx.send(DEVICE_ID, temperature, humidity); 
+  delay(200);
 }
 
 void StartSensorCurrent(){
@@ -110,22 +122,14 @@ void StopSensorCurrent(){
   digitalWrite(CURRENT_PIN,LOW);
 }
 
-void DoErrorBlink(){  
-    DoBlink(3);
-    delay(500);
-    DoBlink(3);
-    delay(500);
-    DoBlink(3);
+void StartRadioTransmitterCurrent(){
+  digitalWrite(RF_CURRENT_PIN,HIGH);
 }
 
-void DoBlink(int times=1) {
-  for(int i=0;i<times;i++){
-    digitalWrite ( LED_PIN, HIGH );        // flash the led on for 100ms
-    delay ( 100 );                        // hate using delay(), but hey! it's only a demo
-    digitalWrite ( LED_PIN, LOW );
-    delay ( 100 ); 
-  }
+void StopRadioTransmitterCurrent(){
+  digitalWrite(RF_CURRENT_PIN,LOW);
 }
+
 
 void sleepNow ()
 {
@@ -153,7 +157,10 @@ void resetWatchDog ()
 {
   MCUSR = 0;
   WDTCR = bit ( WDCE ) | bit ( WDE ) | bit ( WDIF ); // allow changes, disable reset, clear existing interrupt
-  WDTCR = bit ( WDIE ) | bit ( WDP3 )| bit ( WDP0 ); // set WDIE ( Interrupt only, no Reset ) and 1 second TimeOut
+  WDTCR = bit ( WDIE ) | bit ( WDP2 )| bit ( WDP1 ); // set WDIE ( Interrupt only, no Reset ) and 1 second TimeOut
+//  MCUSR = 0;
+//  WDTCR = bit ( WDCE ) | bit ( WDE ) | bit ( WDIF ); // allow changes, disable reset, clear existing interrupt
+//  WDTCR = bit ( WDIE ) | bit ( WDP3 )| bit ( WDP0 ); // set WDIE ( Interrupt only, no Reset ) and 8 second TimeOut
                                                      
   wdt_reset ();                            // reset WDog to parameters
  
