@@ -24,8 +24,8 @@ DallasTemperature sensors(&oneWire);
 FineOffset tx(TX_PIN,3);
 
 byte saveADCSRA;             // variable to save the content of the ADC for later. if needed.
-volatile byte counterWD = 0; // Count how many times WDog has fired. 
-
+volatile int counterWD = 155; // Count how many times WDog has fired. Start with max so we get a reading at power on
+int CountMax=160;
 
 void setup() {  
   resetWatchDog ();                     // do this first in case WDog fires
@@ -52,7 +52,7 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-   if ( counterWD == 80)                 // if the WDog has fired more than x times......
+   if ( counterWD == CountMax)                 // if the WDog has fired more than x times......
   { 
     counterWD = 0;    // reset the counterWD     
     StartSensorCurrent();    
@@ -78,11 +78,20 @@ void loop() {
 }
 
 int GetHumidity(){  
-  int times=10;
+ // return 99;
+  int times=4;
   int soilMoistureValue = 0;
   for(int i=0;i<times;i++){
     soilMoistureValue = analogRead(MOISTURE_PIN);  
     delay(100);
+
+      StartRadioTransmitterCurrent();
+  delay(100);
+  StopRadioTransmitterCurrent();
+  delay(100);
+  StartRadioTransmitterCurrent();
+  delay(100);
+  StopRadioTransmitterCurrent();
   }  
   if(soilMoistureValue>AirValue) soilMoistureValue=AirValue;
   if(soilMoistureValue<WaterValue) soilMoistureValue=WaterValue;
@@ -109,7 +118,7 @@ void SendTemperatureAndMoisture(float temperature, int humidity){
   FineOffset tx(TX_PIN,2);
   delay(200);
   tx.send(DEVICE_ID, temperature, humidity);  
-  delay(400);
+  delay(600);
   tx.send(DEVICE_ID, temperature, humidity); 
   delay(200);
 }
