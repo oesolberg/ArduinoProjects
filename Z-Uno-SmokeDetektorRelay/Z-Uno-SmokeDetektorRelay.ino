@@ -52,6 +52,9 @@ void loop() {
   
  }
  if(sendReport){
+  digitalWrite(ledTest, HIGH);
+  delay(1000);
+  digitalWrite(ledTest, LOW);
   zunoSendReport(ZUNO_CHANNEL_NUMBER_ONE);
  }
 }
