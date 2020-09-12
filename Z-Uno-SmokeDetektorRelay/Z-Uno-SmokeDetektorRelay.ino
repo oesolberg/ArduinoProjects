@@ -1,101 +1,120 @@
-#define EiOutput   9     // pin connection  
-#define EiInput 18//10     // pin connection 
-#define DeltronicsOutput  11     // pin connection 
-#define DeltronicsInput 12     // pin connection 
+// LED pin number
+// 13 pin - user LED of Z-Uno board
+// button pin number
+// 18 pin - button(BTN) of Z-Uno board
 
-#define ledTest 8     // pin connection 
+#define SWITCH_NEW 13
+#define SWITCH_OLD 13
+#define READ_OLD_ALARM 13
+#define READ_NEW_ALARM 13
+#define READ_NEW_FAULT 13
+#define READ_NEW_CO 13
 
-byte currentEiOutpuValue;
-byte currentDeltronicsOutputValue;
-byte lastStateEiInputValue;
-byte lastStatDeltronicsInputValue;
+const int DELAY_TIME=200; //delay after reports
 
-#define ZUNO_CHANNEL_NUMBER_ONE   1
+// variable to store current button state
+byte lastStateSwitchNewSmoke;
+byte lastStateSwitchOldSmoke;
+byte lastStateAlarmOldSmoke;
+byte lastStateAlarmNewSmoke;
+byte lastStateCONewSmoke;
+byte lastStateFaultNewSmoke;
 
-ZUNO_SETUP_CHANNELS(
-      ZUNO_SWITCH_BINARY(getEiOutput, setEiOutput),
-      ZUNO_SWITCH_BINARY(getDeltronicsOutput, setDeltronicsOutput),
-      ZUNO_SENSOR_BINARY(ZUNO_SENSOR_BINARY_TYPE_SMOKE, getEiInput),
-      ZUNO_SENSOR_BINARY(ZUNO_SENSOR_BINARY_TYPE_SMOKE, getDeltronicsInput)
-);
+//I need switches for the following: Turn on alarm in old smoke detektors, read status of old smoke detektors
+//Turn on alarm in new smoke detektors, read status of new smoke detektors, read status of new smoke detektors CO, read status of new smoke detektors fault
+// a total of 6 channels. After reading forums it is smart to keep it at max 8 channels when comunicating with HomeSeer (read in a forum post)
+ZUNO_SETUP_CHANNELS(  
+  ZUNO_SWITCH_BINARY(getterSwitchSmokeNew, setterSwitchSmokeNew),//lastStateSwitchNewSmoke
+  ZUNO_SWITCH_BINARY(getterSwitchSmokeOld, setterSwitchSmokeOld),//lastStateSwitchOldSmoke
+  ZUNO_SWITCH_BINARY(lastStateAlarmOldSmoke, NULL), //lastStateAlarmOldSmoke
+  ZUNO_SWITCH_BINARY(lastStateAlarmNewSmoke, NULL),//lastStateAlarmNewSmoke
+  ZUNO_SWITCH_BINARY(lastStateCONewSmoke, NULL),//lastStateCONewSmoke
+  ZUNO_SWITCH_BINARY(lastStateFaultNewSmoke, NULL)//lastStateFaultNewSmoke
+  );
 
-//Always on
-ZUNO_SETUP_SLEEPING_MODE(ZUNO_SLEEPING_MODE_ALWAYS_AWAKE);
-
+// the setup routine runs once when you press reset:
 void setup() {
-  // put your setup code here, to run once:
-  pinMode(EiOutput, OUTPUT);
-  pinMode(DeltronicsOutput, OUTPUT);
-  pinMode(EiInput, INPUT_PULLUP);
-  pinMode(DeltronicsInput, INPUT_PULLUP);
-  digitalWrite(EiOutput, LOW);
-  digitalWrite(DeltronicsOutput, LOW);
-
-  pinMode(ledTest, OUTPUT);
-  //digitalWrite(ledTest, HIGH);
-  //delay(1000);
-  //digitalWrite(ledTest, LOW);
+  pinMode(SWITCH_NEW, OUTPUT); 
+  pinMode(SWITCH_OLD, OUTPUT); 
+  pinMode(READ_OLD_ALARM , INPUT_PULLUP); 
+  pinMode(READ_NEW_ALARM , INPUT_PULLUP); 
+  pinMode(READ_NEW_FAULT, INPUT_PULLUP); 
+  pinMode(READ_NEW_CO, INPUT_PULLUP); 
+  //pinMode(BTN_PIN, INPUT_PULLUP); // set button pin as input
+ 
 }
 
+// the loop routine runs over and over again forever:
 void loop() {
-  // put your main code here, to run repeatedly:
- bool sendReport=false;
- byte fetchedStateDeltronicsInput=digitalRead(DeltronicsInput);
- byte fetchedStateEiInput=digitalRead(EiInput);
- if(fetchedStateDeltronicsInput!=lastStatDeltronicsInputValue){  
-  lastStatDeltronicsInputValue=fetchedStateDeltronicsInput;    
-  sendReport=true;
- }
- if(fetchedStateEiInput!=lastStateEiInputValue){  
-  lastStateEiInputValue=fetchedStateEiInput;
-  sendReport=true;
+  //Read the state for the old smoke switch/sensor state
+  byte currenStateAlarmOldSmoke= digitalRead(READ_OLD_ALARM);
+  if(lastStateAlarmOldSmoke!=currenStateAlarmOldSmoke)
+  {
+    lastStateAlarmOldSmoke=currenStateAlarmOldSmoke;
+    zunoSendReport(3);
+    delay(DELAY_TIME); //delay  just to give room for any messages
+  }
   
- }
- if(sendReport){
-  digitalWrite(ledTest, HIGH);
-  delay(1000);
-  digitalWrite(ledTest, LOW);
-  zunoSendReport(ZUNO_CHANNEL_NUMBER_ONE);
- }
-}
-
-BYTE getEiOutput() {
-    return currentEiOutpuValue;
-}
-
-void setEiOutput(BYTE newValue) {
-  if (newValue > 0) {               // if greater then zero
-    digitalWrite (EiOutput, HIGH); //turn on (HIGH is the voltage level)
-  } else {                         // if equals zero
-    digitalWrite(EiOutput, LOW);   //turn off by making the voltage LOW
+  //Read the state for the new smoke switch/sensor state
+  byte currenStateAlarmNewSmoke= digitalRead(READ_NEW_ALARM);
+  if(lastStateAlarmNewSmoke!=currenStateAlarmNewSmoke)
+  {
+    lastStateAlarmNewSmoke=currenStateAlarmNewSmoke;
+    zunoSendReport(4);
+    delay(DELAY_TIME); //delay  just to give room for any messages
   }
-  // we'll save our value for the situation, when the controller will ask us about it
-  currentEiOutpuValue = newValue;
-}
 
-BYTE getDeltronicsOutput() {
-    return currentDeltronicsOutputValue;
-}
-
-void setDeltronicsOutput(BYTE newValue) {
-  if (newValue > 0) {               // if greater then zero
-    digitalWrite (DeltronicsOutput, HIGH); //turn on (HIGH is the voltage level)
-  } else {                         // if equals zero
-    digitalWrite(DeltronicsOutput, LOW);   //turn off by making the voltage LOW
+  //Read the state for the new smoke switch/sensor state
+  byte currenStateCONewSmoke= digitalRead(READ_NEW_CO);
+  if(lastStateCONewSmoke!=currenStateCONewSmoke)
+  {
+    lastStateCONewSmoke=currenStateCONewSmoke;
+    zunoSendReport(5);
+    delay(DELAY_TIME); //delay  just to give room for any messages
   }
-  // we'll save our value for the situation, when the controller will ask us about it
-  currentDeltronicsOutputValue = newValue;
-}
 
-BYTE getEiInput() {
-   if (lastStateEiInputValue == 0) { // if button is pressed
-    return 0xff;              // return "Triggered" state to the controller
-  } else {                    // if button is released
-    return 0;                 // return "Idle" state to the controller
+  //Read the state for the new smoke switch/sensor state
+  byte currenStateFaultNewSmoke= digitalRead(READ_NEW_FAULT);
+  if(lastStateFaultNewSmoke!=currenStateFaultNewSmoke)
+  {
+    lastStateFaultNewSmoke=currenStateFaultNewSmoke;
+    zunoSendReport(6);
+    delay(DELAY_TIME); //delay  just to give room for any messages
   }
-    //return lastStateEiInputValue;
 }
 
-BYTE getDeltronicsInput() {
-    return lastStatDeltronicsInputValue;
+byte setterSwitchSmokeNew(byte value) 
+{
+   if (value > 0) 
+   {               // if greater then zero
+    digitalWrite (SWITCH_NEW, HIGH); //turn the switch on        
+  } 
+  else 
+  {                         // if equals zero
+    digitalWrite(SWITCH_NEW, LOW);   //turn the switch off    
+  } 
+  lastStateSwitchNewSmoke=value;     
+}
+
+byte setterSwitchSmokeOld(byte value) 
+{
+  if (value > 0) 
+  {               // if greater then zero
+    digitalWrite (SWITCH_OLD, HIGH); //turn the switch on        
+  } 
+  else 
+  {                         // if equals zero
+    digitalWrite(SWITCH_OLD, LOW);   //turn the switch off    
+  } 
+  lastStateSwitchOldSmoke=value;     
+}
+
+byte getterSwitchSmokeNew() 
+{
+  return lastStateSwitchNewSmoke;
+}
+
+byte getterSwitchSmokeOld() 
+{
+  return lastStateSwitchOldSmoke;
 }
