@@ -3,12 +3,12 @@
 // button pin number
 // 18 pin - button(BTN) of Z-Uno board
 
-#define SWITCH_NEW 13
-#define SWITCH_OLD 13
-#define READ_OLD_ALARM 13
-#define READ_NEW_ALARM 13
-#define READ_NEW_FAULT 13
-#define READ_NEW_CO 13
+#define SWITCH_NEW 7
+#define SWITCH_OLD 8
+#define READ_OLD_ALARM 9
+#define READ_NEW_ALARM 10
+#define READ_NEW_FAULT 11
+#define READ_NEW_CO 12
 
 const int DELAY_TIME=200; //delay after reports
 
@@ -41,7 +41,15 @@ void setup() {
   pinMode(READ_NEW_FAULT, INPUT_PULLUP); 
   pinMode(READ_NEW_CO, INPUT_PULLUP); 
   //pinMode(BTN_PIN, INPUT_PULLUP); // set button pin as input
- 
+ SendInitialStatus();
+}
+
+void SendInitialStatus(){
+  //Will send inital status for all channels
+   for (int i = 1; i <= 6; i++) {
+    zunoSendReport(i);
+    delay(DELAY_TIME); //delay  just to give room for any messages
+   }    
 }
 
 // the loop routine runs over and over again forever:
