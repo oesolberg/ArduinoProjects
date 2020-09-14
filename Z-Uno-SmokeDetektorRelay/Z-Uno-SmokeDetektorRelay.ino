@@ -9,7 +9,7 @@
 #define READ_NEW_ALARM 10
 #define READ_NEW_FAULT 11
 #define READ_NEW_CO 12
-
+#define LED_PIN 13
 const int DELAY_TIME=200; //delay after reports
 
 // variable to store current button state
@@ -19,6 +19,8 @@ byte lastStateAlarmOldSmoke;
 byte lastStateAlarmNewSmoke;
 byte lastStateCONewSmoke;
 byte lastStateFaultNewSmoke;
+
+ZUNO_SETUP_SLEEPING_MODE(ZUNO_SLEEPING_MODE_ALWAYS_AWAKE);
 
 //I need switches for the following: Turn on alarm in old smoke detektors, read status of old smoke detektors
 //Turn on alarm in new smoke detektors, read status of new smoke detektors, read status of new smoke detektors CO, read status of new smoke detektors fault
@@ -36,21 +38,22 @@ ZUNO_SETUP_CHANNELS(
 void setup() {
   pinMode(SWITCH_NEW, OUTPUT); 
   pinMode(SWITCH_OLD, OUTPUT); 
+  pinMode(LED_PIN , OUTPUT); 
   pinMode(READ_OLD_ALARM , INPUT_PULLUP); 
   pinMode(READ_NEW_ALARM , INPUT_PULLUP); 
   pinMode(READ_NEW_FAULT, INPUT_PULLUP); 
   pinMode(READ_NEW_CO, INPUT_PULLUP); 
   //pinMode(BTN_PIN, INPUT_PULLUP); // set button pin as input
- SendInitialStatus();
+ //SendInitialStatus();
 }
 
-void SendInitialStatus(){
-  //Will send inital status for all channels
-   for (int i = 1; i <= 6; i++) {
-    zunoSendReport(i);
-    delay(DELAY_TIME); //delay  just to give room for any messages
-   }    
-}
+//void SendInitialStatus(){
+//  //Will send inital status for all channels
+//   for (int i = 1; i <= 6; i++) {
+//    zunoSendReport(i);
+//    delay(DELAY_TIME); //delay  just to give room for any messages
+//   }    
+//}
 
 // the loop routine runs over and over again forever:
 void loop() {
@@ -89,7 +92,19 @@ void loop() {
     zunoSendReport(6);
     delay(DELAY_TIME); //delay  just to give room for any messages
   }
-  delay(1000); //One second delay between checks
+  //delay(1000); //One second delay between checks
+  if(lastStateFaultNewSmoke==0 || 
+      lastStateAlarmNewSmoke==0 ||
+      lastStateCONewSmoke==0 ||
+      lastStateAlarmOldSmoke==0){
+    digitalWrite (LED_PIN , LOW);
+  }
+  else
+  {
+    digitalWrite (LED_PIN , HIGH);
+  }
+  
+  
 }
 
 byte setterSwitchSmokeNew(byte value) 
