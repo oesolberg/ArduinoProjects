@@ -89,6 +89,7 @@ void loop() {
     zunoSendReport(6);
     delay(DELAY_TIME); //delay  just to give room for any messages
   }
+  delay(1000); //One second delay between checks
 }
 
 byte setterSwitchSmokeNew(byte value) 
