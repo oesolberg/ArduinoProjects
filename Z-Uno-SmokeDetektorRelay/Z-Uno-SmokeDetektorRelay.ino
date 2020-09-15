@@ -22,8 +22,8 @@ byte lastStateFaultNewSmoke;
 
 ZUNO_SETUP_SLEEPING_MODE(ZUNO_SLEEPING_MODE_ALWAYS_AWAKE);
 
-//I need switches for the following: Turn on alarm in old smoke detektors, read status of old smoke detektors
-//Turn on alarm in new smoke detektors, read status of new smoke detektors, read status of new smoke detektors CO, read status of new smoke detektors fault
+// I need switches for the following: Turn on alarm in old smoke detektors, read status of old smoke detektors
+// Turn on alarm in new smoke detektors, read status of new smoke detektors, read status of new smoke detektors CO, read status of new smoke detektors fault
 // a total of 6 channels. After reading forums it is smart to keep it at max 8 channels when comunicating with HomeSeer (read in a forum post)
 ZUNO_SETUP_CHANNELS(  
   ZUNO_SWITCH_BINARY(getterSwitchSmokeNew, setterSwitchSmokeNew),//lastStateSwitchNewSmoke
@@ -44,16 +44,16 @@ void setup() {
   pinMode(READ_NEW_FAULT, INPUT_PULLUP); 
   pinMode(READ_NEW_CO, INPUT_PULLUP); 
   //pinMode(BTN_PIN, INPUT_PULLUP); // set button pin as input
- //SendInitialStatus();
+  SendInitialStatus();
 }
 
-//void SendInitialStatus(){
-//  //Will send inital status for all channels
-//   for (int i = 1; i <= 6; i++) {
-//    zunoSendReport(i);
-//    delay(DELAY_TIME); //delay  just to give room for any messages
-//   }    
-//}
+void SendInitialStatus(){
+  //Will send inital status for all channels
+   for (int i = 1; i <= 6; i++) {
+    zunoSendReport(i);
+    delay(DELAY_TIME); //delay  just to give room for any messages
+   }    
+}
 
 // the loop routine runs over and over again forever:
 void loop() {
@@ -63,6 +63,7 @@ void loop() {
   {
     lastStateAlarmOldSmoke=currenStateAlarmOldSmoke;
     zunoSendReport(3);
+    //digitalWrite (LED_PIN , HIGH);
     delay(DELAY_TIME); //delay  just to give room for any messages
   }
   
@@ -92,19 +93,17 @@ void loop() {
     zunoSendReport(6);
     delay(DELAY_TIME); //delay  just to give room for any messages
   }
-  //delay(1000); //One second delay between checks
-  if(lastStateFaultNewSmoke==0 || 
-      lastStateAlarmNewSmoke==0 ||
-      lastStateCONewSmoke==0 ||
+  
+  if(lastStateFaultNewSmoke==0 && 
+      lastStateAlarmNewSmoke==0 &&
+      lastStateCONewSmoke==0 &&
       lastStateAlarmOldSmoke==0){
     digitalWrite (LED_PIN , LOW);
   }
   else
   {
     digitalWrite (LED_PIN , HIGH);
-  }
-  
-  
+  }    
 }
 
 byte setterSwitchSmokeNew(byte value) 
