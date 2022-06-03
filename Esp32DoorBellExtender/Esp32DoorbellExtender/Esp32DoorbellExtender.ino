@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include <ArduinoOTA.h>
 //File for WIFI_SSID, WIFI_PASSWORD, MQTT_SERVER, SERVER_FAN_TOPIC, SERVER_TEMPERATURE_TOPIC, MQTT_ID, MQTT_USER, MQTT_PASSWORD
 #include "Secrets.h"
 
@@ -20,17 +21,15 @@ void setup()
   //Set pinmodes
   pinMode(ESP_BUILTIN_LED, OUTPUT);
   pinMode(RELAY_OUTPUT, OUTPUT);
-  pinMode(ONE_WIRE_BUS, INPUT);
+
   //Set
-  digitalWrite(RELAY_INPUT, RELAY_OFF);
+  digitalWrite(RELAY_OUTPUT, LOW);
   digitalWrite(ESP_BUILTIN_LED, LOW);
 
-  SendOK();
   setup_wifi();
   client.setServer(MQTT_SERVER, 1883);
   client.setCallback(callback);
-  // Start the DS18B20 sensor
-  sensors.begin();
+  
 }
 
 void setup_wifi()
@@ -118,11 +117,11 @@ void callback(char* topic, byte* message, unsigned int length) {
     Serial.print("Changing output to ");
     if(messageTemp == "on"){
       Serial.println("on");
-      digitalWrite(ledPin, HIGH);
+      digitalWrite(ESP_BUILTIN_LED, HIGH);
     }
     else if(messageTemp == "off"){
       Serial.println("off");
-      digitalWrite(ledPin, LOW);
+      digitalWrite(ESP_BUILTIN_LED, LOW);
     }
   }
 }
@@ -133,7 +132,6 @@ void PublishIpAddressInfo(){
   char data[100];  
   sprintf(data,"Device with mqtt user '%s' is online at %s",MQTT_USER,WiFi.localIP().toString().c_str());
   client.publish(SERVER_INFO_TOPIC,data,true);  
-  Blink();
 }
 
 void SendInitialDataToMqtt(float temperature , bool relayState) {
@@ -143,10 +141,11 @@ void SendInitialDataToMqtt(float temperature , bool relayState) {
   sprintf(data,"Device with mqtt user '%s' is online at %s",MQTT_USER,WiFi.localIP().toString().c_str());
   client.publish(SERVER_INFO_TOPIC,data,true);
  
-  Blink();
+ }
+
+bool timeDiffHigher(long lastPublished,long now,long maxBetweenMessages){
+  return now>=(lastPublished+maxBetweenMessages);
 }
-
-
 
 void loop(){
   ArduinoOTA.handle();
@@ -171,14 +170,14 @@ void loop(){
 void soundBell() {
   
   //2x ding dong
-  digitalWrite(relay,HIGH);
+  digitalWrite(RELAY_OUTPUT,HIGH);
   Serial.println("Ding dong 2x");
   delay(500);
-  digitalWrite(relay,LOW);  
+  digitalWrite(RELAY_OUTPUT,LOW);  
   delay(200);
-  digitalWrite(relay,HIGH);
+  digitalWrite(RELAY_OUTPUT,HIGH);
   delay(500);
-  digitalWrite(relay,LOW);    
+  digitalWrite(RELAY_OUTPUT,LOW);    
   Serial.println("Done");
   
 }
