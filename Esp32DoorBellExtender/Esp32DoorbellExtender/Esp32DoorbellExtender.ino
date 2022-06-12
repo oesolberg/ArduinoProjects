@@ -86,6 +86,9 @@ void reconnect()
     if (client.connect(MQTT_ID, MQTT_USER, MQTT_PASSWORD))
     {
       Serial.println("connected");
+      client.subscribe(SERVER_BELL_TOPIC);
+      Serial.print("subscribed to");
+      Serial.println(SERVER_BELL_TOPIC);
     }
     else
     {
@@ -113,16 +116,17 @@ void callback(char* topic, byte* message, unsigned int length) {
 
   // If a message is received on the topic esp32/output, you check if the message is either "on" or "off". 
   // Changes the output state according to the message
-  if (String(topic) == "esp32/output") {
-    Serial.print("Changing output to ");
-    if(messageTemp == "on"){
-      Serial.println("on");
-      digitalWrite(ESP_BUILTIN_LED, HIGH);
-    }
-    else if(messageTemp == "off"){
-      Serial.println("off");
-      digitalWrite(ESP_BUILTIN_LED, LOW);
-    }
+  if (String(topic) == SERVER_BELL_TOPIC) {
+    Serial.println("sounding the bell");
+    soundBell();
+//    if(messageTemp == "on"){
+//      Serial.println("on");
+//      digitalWrite(ESP_BUILTIN_LED, HIGH);
+//    }
+//    else if(messageTemp == "off"){
+//      Serial.println("off");
+//      digitalWrite(ESP_BUILTIN_LED, LOW);
+//    }
   }
 }
 
@@ -143,9 +147,20 @@ void SendInitialDataToMqtt(float temperature , bool relayState) {
  
  }
 
+ void SendInitialDataToMqtt() {
+  Serial.println("Sending initial state");
+  //Info
+  char data[100];  
+  sprintf(data,"Device with mqtt user '%s' is online at %s",MQTT_USER,WiFi.localIP().toString().c_str());
+  client.publish(SERVER_INFO_TOPIC,data,true);
+  
+}
+
 bool timeDiffHigher(long lastPublished,long now,long maxBetweenMessages){
   return now>=(lastPublished+maxBetweenMessages);
 }
+
+bool isFirstRunInLoop = true;
 
 void loop(){
   ArduinoOTA.handle();
@@ -155,7 +170,13 @@ void loop(){
     reconnect();
   }
   client.loop();
+  
   long now = millis();
+   if (isFirstRunInLoop) {
+      SendInitialDataToMqtt();
+      lastPublishedIpAddressMsg=now;
+      isFirstRunInLoop=false;
+    }
   if (timeDiffHigher(lastPublishedIpAddressMsg,now,MAX_BETWEEN_PUBLISH_INFO))
     {       
       PublishIpAddressInfo();     
