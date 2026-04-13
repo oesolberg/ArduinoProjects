@@ -15,7 +15,7 @@
 #define SmallMotorRelay 13
 #define L1MotorRelay 14
 #define L2MotorRelay 27
-
+const int ESP_BUILTIN_LED = 2;
 
 //UDP stuff
 char packetBuffer[255];               //buffer to hold incoming packet
@@ -45,6 +45,11 @@ bool L1MotorRelayActive = false;
 bool L2MotorRelayActive = false;
 bool smallMotorRelayActive = false;
 
+bool previousCommonCurrentRelayActive = false;
+bool previousL1MotorRelayActive = false;
+bool previousL2MotorRelayActive = false;
+bool previousSmallMotorRelayActive = false;
+
 
 
 void setup() {
@@ -72,11 +77,59 @@ void setup() {
   Udp.begin(UDP_PORT);
 }
 
+int numberOfLoopsWithoutConnection = 0;
+
+void loop() {
+  TryToConnectToWifi();
+  if (WiFi.status() != WL_CONNECTED) {
+    numberOfLoopsWithoutConnection++;
+    if (numberOfLoopsWithoutConnection >= 5) {
+      Serial.println("Connection Failed! Rebooting in 5 seconds...");
+      delay(5000);
+      ESP.restart();      
+    }
+  }
+  float temperatureC = GetTemperatureFromDevices();
+  //If 0 degrees or less it is either wrong or it should not be running since the greenhouse is meant for summer
+  //And only update on change in motors
+  if (temperatureC > 0.0 && temperatureC < 60 && (previousTemperatureC != temperatureC)) {
+    SetFansBasedOnTemperature(temperatureC);
+    previousTemperatureC = temperatureC;
+    //if (MotorStatusIsChanged())
+    SendDataWithUdp();
+  }
+  delay(60000);  //Delay for 10 seconds before doing a new check
+}
+
+bool MotorStatusIsChanged() {
+  bool motorStatusIsChanged = false;
+  if (previousCommonCurrentRelayActive != commonCurrentRelayActive) {
+    motorStatusIsChanged = true;
+  }
+  if (previousL1MotorRelayActive != L1MotorRelayActive) {
+    motorStatusIsChanged = true;
+  }
+  if (previousL2MotorRelayActive != L2MotorRelayActive) {
+    motorStatusIsChanged = true;
+  }
+  if (previousSmallMotorRelayActive != smallMotorRelayActive) {
+    motorStatusIsChanged = true;
+  }
+  previousCommonCurrentRelayActive = commonCurrentRelayActive;
+  previousL1MotorRelayActive = L1MotorRelayActive;
+  previousL2MotorRelayActive = L2MotorRelayActive;
+  previousSmallMotorRelayActive = smallMotorRelayActive;
+
+  return motorStatusIsChanged;
+}
+
 void SetUpPins() {
   pinMode(CommonCurrentRelay, OUTPUT);
   pinMode(SmallMotorRelay, OUTPUT);
   pinMode(L1MotorRelay, OUTPUT);
   pinMode(L2MotorRelay, OUTPUT);
+  pinMode(ESP_BUILTIN_LED, OUTPUT);
+  pinMode(ONE_WIRE_BUS, INPUT);
 }
 
 void SetUpTemperatureDevices() {
@@ -151,17 +204,6 @@ void SetUpWifi() {
   WiFi.setHostname("GreenhouseFanController");
 }
 
-void loop() {
-  TryToConnectToWifi();
-  float temperatureC = GetTemperatureFromDevices();
-
-  SetFansBasedOnTemperature(temperatureC);
-  previousTemperatureC = temperatureC;
-
-  SendDataWithUdp();
-
-  delay(10000);  //Delay for 10 seconds before doing a new check
-}
 
 void TryToConnectToWifi() {
   int numberOfTries = 4;
@@ -180,8 +222,8 @@ void TryToConnectToWifi() {
 
 float GetTemperatureFromDevices() {
   sensors.requestTemperatures();  // Send the command to get temperatures
-  delay(250);
-  float highestTemperatureC = 0;
+  delay(800);
+  float highestTemperatureC = -10;
 
   // Loop through each device, print out temperature data
   for (int i = 0; i < numberOfDevices; i++) {
@@ -308,7 +350,7 @@ void StopSmallMotor() {
 void StartL1Motor() {
   //Stop L2 if active since they will short circut if on at the same time
   SetL2MotorRelay(false);
-  delay(750);
+  delay(1000);
   SetL1MotorRelay(true);
 }
 
@@ -318,7 +360,7 @@ void StopL1Motor() {
 
 void StartL2Motor() {
   SetL1MotorRelay(false);
-  delay(750);
+  delay(1000);
   SetL2MotorRelay(true);
 }
 
@@ -409,6 +451,7 @@ bool OneOrMoreMotorRelaysAreStillActive() {
 }
 
 void SendDataWithUdp() {
+
   JsonDocument doc;
   doc["name"] = "GreenHouseFanData";
   doc["Temperature"] = previousTemperatureC;
@@ -418,20 +461,6 @@ void SendDataWithUdp() {
   doc["L2Motor"] = (int)L2MotorRelayActive;
   doc["TempRising"] = (int)TemperatureRising;
 
-
-  // String msg = "GreenhouseFanData&Temperature=";
-  // msg.concat(previousTemperatureC);
-  // msg.concat("&CommonCurrent=");
-  // msg.concat(commonCurrentRelayActive);
-  // msg.concat("&SmallMotor=");
-  // msg.concat(smallMotorRelayActive);
-
-  // msg.concat("&L1Motor=");
-  // msg.concat(L1MotorRelayActive);
-  // msg.concat("&L2Motor=");
-  // msg.concat(L2MotorRelayActive);
-  // msg.concat("&TempRising=");
-  // msg.concat(TemperatureRising);
 
   String output;
   serializeJson(doc, output);
@@ -450,4 +479,27 @@ void SendDataWithUdp() {
   Udp.beginPacket(ip, UDP_PORT);
   Udp.print(char_array);
   Udp.endPacket();
+  Blink3Times();
+}
+const int MORSE_TIME_PERIOD = 150;
+void Blink3Times() {
+  digitalWrite(ESP_BUILTIN_LED, HIGH);
+  delay(MORSE_TIME_PERIOD);
+  digitalWrite(ESP_BUILTIN_LED, LOW);
+  delay(MORSE_TIME_PERIOD);
+  digitalWrite(ESP_BUILTIN_LED, HIGH);
+  delay(MORSE_TIME_PERIOD);
+  digitalWrite(ESP_BUILTIN_LED, LOW);
+  delay(MORSE_TIME_PERIOD);
+  digitalWrite(ESP_BUILTIN_LED, HIGH);
+  delay(MORSE_TIME_PERIOD);
+  digitalWrite(ESP_BUILTIN_LED, LOW);
+  delay(10);
+}
+
+void Blink() {
+  digitalWrite(ESP_BUILTIN_LED, HIGH);
+  delay(MORSE_TIME_PERIOD);
+  digitalWrite(ESP_BUILTIN_LED, LOW);
+  delay(MORSE_TIME_PERIOD);
 }
