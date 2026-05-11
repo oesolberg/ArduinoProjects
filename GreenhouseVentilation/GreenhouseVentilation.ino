@@ -460,6 +460,7 @@ void SendDataWithUdp() {
   doc["L1Motor"] = (int)L1MotorRelayActive;
   doc["L2Motor"] = (int)L2MotorRelayActive;
   doc["TempRising"] = (int)TemperatureRising;
+  doc["MotorPower"] = CreateMotorPowerNumber();
 
 
   String output;
@@ -481,6 +482,20 @@ void SendDataWithUdp() {
   Udp.endPacket();
   Blink3Times();
 }
+
+int CreateMotorPowerNumber(){
+  int motorPowerNumber=0;
+  if(smallMotorRelayActive)
+    motorPowerNumber=motorPowerNumber+1;
+  if(L1MotorRelayActive);
+    motorPowerNumber=motorPowerNumber+10;
+  if(L2MotorRelayActive)
+    motorPowerNumber=motorPowerNumber+100;
+  return motorPowerNumber;
+}
+
+
+
 const int MORSE_TIME_PERIOD = 150;
 void Blink3Times() {
   digitalWrite(ESP_BUILTIN_LED, HIGH);
