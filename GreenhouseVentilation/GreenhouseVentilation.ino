@@ -94,6 +94,7 @@ void loop() {
   //And only update on change in motors
   if (temperatureC > 0.0 && temperatureC < 60 && (previousTemperatureC != temperatureC)) {
     SetFansBasedOnTemperature(temperatureC);
+    delay(1000);
     previousTemperatureC = temperatureC;
     //if (MotorStatusIsChanged())
     SendDataWithUdp();
@@ -258,30 +259,31 @@ void SetFansBasedOnTemperature(float temperatureC) {
     Serial.println("");
     Serial.println("*** Temperature rising and above 26 degrees C ***");
 
-    if (temperatureC >= 34 && (!L2MotorRelayActive || !smallMotorRelayActive)) {
+    if (temperatureC >= 34) {
       StartSmallMotor();
       StopL1Motor();
       StartL2Motor();
     }
-    if (temperatureC < 34 && temperatureC >= 32 && (!L2MotorRelayActive || smallMotorRelayActive)) {
+    if (temperatureC < 34 && temperatureC >= 32 ) {
+      StopL2Motor();
+      StartL1Motor();      
+      StartSmallMotor();
+    }
+    if (temperatureC < 32 && temperatureC >= 30 ) {
+      StopSmallMotor();
       StopL1Motor();
       StartL2Motor();
-      StopSmallMotor();
     }
-    if (temperatureC < 32 && temperatureC >= 30 && (!L1MotorRelayActive || !smallMotorRelayActive)) {
-      StartSmallMotor();
-      StopL2Motor();
-      StartL1Motor();
-    }
-    if (temperatureC < 30 && temperatureC >= 28 && (!L1MotorRelayActive || smallMotorRelayActive)) {
+    if (temperatureC < 30 && temperatureC >= 28 ) {
       StopL2Motor();
       StopSmallMotor();
       StartL1Motor();
     }
-    if (temperatureC < 28 && temperatureC >= 26 && (!smallMotorRelayActive)) {
-      StartSmallMotor();
+    if (temperatureC < 28 && temperatureC >= 26 ) {
       StopL1Motor();
       StopL2Motor();
+      StartSmallMotor();
+
     }
   }
   //Turning off motors when temperature is going down
@@ -302,14 +304,14 @@ void SetFansBasedOnTemperature(float temperatureC) {
       StartL1Motor();
     }
     if (temperatureC > 29 && temperatureC <= 31) {
-      StartSmallMotor();
-      StopL2Motor();
-      StartL1Motor();
+      StopSmallMotor();
+      StopL1Motor();
+      StartL2Motor();
     }
     if (temperatureC > 31 && temperatureC <= 33) {
-      StopL1Motor();
-      StopSmallMotor();
-      StartL2Motor();
+      StopL2Motor();
+      StartSmallMotor();
+      StartL1Motor();
     }
   }
 
@@ -487,7 +489,7 @@ int CreateMotorPowerNumber(){
   int motorPowerNumber=0;
   if(smallMotorRelayActive)
     motorPowerNumber=motorPowerNumber+1;
-  if(L1MotorRelayActive);
+  if(L1MotorRelayActive)
     motorPowerNumber=motorPowerNumber+10;
   if(L2MotorRelayActive)
     motorPowerNumber=motorPowerNumber+100;
