@@ -490,9 +490,9 @@ int CreateMotorPowerNumber(){
   if(smallMotorRelayActive)
     motorPowerNumber=motorPowerNumber+1;
   if(L1MotorRelayActive)
-    motorPowerNumber=motorPowerNumber+10;
+    motorPowerNumber=motorPowerNumber+2;
   if(L2MotorRelayActive)
-    motorPowerNumber=motorPowerNumber+100;
+    motorPowerNumber=motorPowerNumber+4;
   return motorPowerNumber;
 }
 
